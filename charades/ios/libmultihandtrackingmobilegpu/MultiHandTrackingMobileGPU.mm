@@ -11,8 +11,30 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// MIT License
+//
+// Copyright (c) 2020 Petros Fountas
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
-#import "ViewController.h"
+#import "MultiHandTrackingMobileGPU.h"
 
 #import "mediapipe/objc/MPPGraph.h"
 #import "mediapipe/objc/MPPCameraInputSource.h"
@@ -27,7 +49,7 @@ static const char* kOutputStream = "output_video";
 static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
 
-@interface ViewController () <MPPGraphDelegate, MPPInputSourceDelegate>
+@interface MultiHandTrackingMobileGPU () <MPPGraphDelegate, MPPInputSourceDelegate>
 
 // The MediaPipe graph currently in use. Initialized in viewDidLoad, started in viewWillAppear: and
 // sent video frames on _videoQueue.
@@ -35,7 +57,7 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
 
 @end
 
-@implementation ViewController {
+@implementation MultiHandTrackingMobileGPU {
   /// Handles camera access via AVCaptureSession library.
   MPPCameraInputSource* _cameraSource;
 
@@ -58,6 +80,49 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
   // Ignore errors since we're cleaning up.
   [self.mediapipeGraph closeAllInputStreamsWithError:nil];
   [self.mediapipeGraph waitUntilDoneWithError:nil];
+}
+
+#pragma mark - External methods
+
+// Initialize graph and camera
+- (void)initGraphAndCamera {
+
+  _renderer = [[MPPLayerRenderer alloc] init];
+  _renderer.layer.frame = _liveView.layer.bounds;
+  [_liveView.layer addSublayer:_renderer.layer];
+  _renderer.frameScaleMode = MPPFrameScaleModeFillAndCrop;
+  // When using the front camera, mirror the input for a more natural look.
+  _renderer.mirrored = YES;
+
+  dispatch_queue_attr_t qosAttribute = dispatch_queue_attr_make_with_qos_class(
+      DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INTERACTIVE, /*relative_priority=*/0);
+  _videoQueue = dispatch_queue_create(kVideoQueueLabel, qosAttribute);
+
+  _cameraSource = [[MPPCameraInputSource alloc] init];
+  [_cameraSource setDelegate:self queue:_videoQueue];
+  _cameraSource.sessionPreset = AVCaptureSessionPresetHigh;
+  _cameraSource.cameraPosition = AVCaptureDevicePositionFront;
+  // The frame's native format is rotated with respect to the portrait orientation.
+  _cameraSource.orientation = AVCaptureVideoOrientationPortrait;
+
+  self.mediapipeGraph = [[self class] loadGraphFromResource:kGraphName];
+  self.mediapipeGraph.delegate = self;
+  // Set maxFramesInFlight to a small value to avoid memory contention for real-time processing.
+  self.mediapipeGraph.maxFramesInFlight = 2;
+}
+
+// Start graph and camera
+- (void)startGraphAndCamera {
+  // Start running self.mediapipeGraph.
+  NSError* error;
+  if (![self.mediapipeGraph startWithError:&error]) {
+    NSLog(@"Failed to start graph: %@", error);
+  }
+
+  // Start fetching frames from the camera.
+  dispatch_async(_videoQueue, ^{
+    [_cameraSource start];
+  });
 }
 
 #pragma mark - MediaPipe graph methods
@@ -85,67 +150,6 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
   [newGraph addFrameOutputStream:kOutputStream outputPacketType:MPPPacketTypePixelBuffer];
   [newGraph addFrameOutputStream:kLandmarksOutputStream outputPacketType:MPPPacketTypeRaw];
   return newGraph;
-}
-
-#pragma mark - UIViewController methods
-
-- (void)viewDidLoad {
-  [super viewDidLoad];
-
-  _renderer = [[MPPLayerRenderer alloc] init];
-  _renderer.layer.frame = _liveView.layer.bounds;
-  [_liveView.layer addSublayer:_renderer.layer];
-  _renderer.frameScaleMode = MPPFrameScaleModeFillAndCrop;
-  // When using the front camera, mirror the input for a more natural look.
-  _renderer.mirrored = YES;
-
-  dispatch_queue_attr_t qosAttribute = dispatch_queue_attr_make_with_qos_class(
-      DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INTERACTIVE, /*relative_priority=*/0);
-  _videoQueue = dispatch_queue_create(kVideoQueueLabel, qosAttribute);
-
-  _cameraSource = [[MPPCameraInputSource alloc] init];
-  [_cameraSource setDelegate:self queue:_videoQueue];
-  _cameraSource.sessionPreset = AVCaptureSessionPresetHigh;
-  _cameraSource.cameraPosition = AVCaptureDevicePositionFront;
-  // The frame's native format is rotated with respect to the portrait orientation.
-  _cameraSource.orientation = AVCaptureVideoOrientationPortrait;
-
-  self.mediapipeGraph = [[self class] loadGraphFromResource:kGraphName];
-  self.mediapipeGraph.delegate = self;
-  // Set maxFramesInFlight to a small value to avoid memory contention for real-time processing.
-  self.mediapipeGraph.maxFramesInFlight = 2;
-}
-
-// In this application, there is only one ViewController which has no navigation to other view
-// controllers, and there is only one View with live display showing the result of running the
-// MediaPipe graph on the live video feed. If more view controllers are needed later, the graph
-// setup/teardown and camera start/stop logic should be updated appropriately in response to the
-// appearance/disappearance of this ViewController, as viewWillAppear: can be invoked multiple times
-// depending on the application navigation flow in that case.
-- (void)viewWillAppear:(BOOL)animated {
-  [super viewWillAppear:animated];
-
-  [_cameraSource requestCameraAccessWithCompletionHandler:^void(BOOL granted) {
-    if (granted) {
-      [self startGraphAndCamera];
-      dispatch_async(dispatch_get_main_queue(), ^{
-        _noCameraLabel.hidden = YES;
-      });
-    }
-  }];
-}
-
-- (void)startGraphAndCamera {
-  // Start running self.mediapipeGraph.
-  NSError* error;
-  if (![self.mediapipeGraph startWithError:&error]) {
-    NSLog(@"Failed to start graph: %@", error);
-  }
-
-  // Start fetching frames from the camera.
-  dispatch_async(_videoQueue, ^{
-    [_cameraSource start];
-  });
 }
 
 #pragma mark - MPPGraphDelegate methods
