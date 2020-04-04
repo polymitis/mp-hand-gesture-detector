@@ -36,46 +36,46 @@
 
 load(
     "@build_bazel_rules_apple//apple:ios.bzl",
-    "ios_application",
+    "ios_framework",
 )
 
 licenses(["notice"])  # Apache 2.0
 
-MIN_IOS_VERSION = "10.0"
-
-# To use the 3D model instead of the default 2D model, add "--define 3D=true" to the
-# bazel build command.
-config_setting(
-    name = "use_3d_model",
-    define_values = {
-        "3D": "true",
-    },
-)
+MIN_IOS_VERSION = "11.0"
 
 genrule(
     name = "model",
-    srcs = select({
-        "//conditions:default": ["//mediapipe/models:hand_landmark.tflite"],
-        ":use_3d_model": ["//mediapipe/models:hand_landmark_3d.tflite"],
-    }),
-    outs = ["hand_landmark.tflite"],
+    srcs = [
+        "//mediapipe/models:hand_landmark.tflite"
+    ],
+    outs = [
+        "hand_landmark.tflite"
+    ],
     cmd = "cp $< $@",
 )
 
-apple_static_library(
-    name = "libmultihandtrackingmobilegpu",
-    platform_type = "ios",
+ios_framework(
+    name = "Charades",
+    bundle_id = "com.polymitis.framework.charades",
+    families = [
+        "iphone",
+        "ipad",
+    ],
+    infoplists = ["Info.plist"],
     minimum_os_version = MIN_IOS_VERSION,
-    deps = [":multihandtrackingmobilegpu"],
+    hdrs = [
+        "Charades.h",
+    ],
+    deps = [":CharadesLib"],
 )
 
 objc_library(
-    name = "multihandtrackingmobilegpu",
-    srcs = [
-        "MultiHandTrackingMobileGPU.mm",
-    ],
+    name = "CharadesLib",
     hdrs = [
-        "MultiHandTrackingMobileGPU.h",
+        "Charades.h",
+    ],
+    srcs = [
+        "Charades.mm",
     ],
     data = [
         ":model",
@@ -93,13 +93,8 @@ objc_library(
         "//mediapipe/objc:mediapipe_framework_ios",
         "//mediapipe/objc:mediapipe_input_sources_ios",
         "//mediapipe/objc:mediapipe_layer_renderer",
+        "//mediapipe/graphs/hand_tracking:multi_hand_mobile_calculators",
+        "//mediapipe/framework/formats:landmark_cc_proto",
         "@ios_opencv//:OpencvFramework",
-    ] + select({
-        "//mediapipe:ios_i386": [],
-        "//mediapipe:ios_x86_64": [],
-        "//conditions:default": [
-            "//mediapipe/graphs/hand_tracking:multi_hand_mobile_calculators",
-            "//mediapipe/framework/formats:landmark_cc_proto",
-        ],
-    }),
+    ],
 )

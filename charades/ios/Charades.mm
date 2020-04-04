@@ -34,7 +34,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#import "MultiHandTrackingMobileGPU.h"
+#import "Charades.h"
 
 #import "mediapipe/objc/MPPGraph.h"
 #import "mediapipe/objc/MPPCameraInputSource.h"
@@ -49,7 +49,7 @@ static const char* kOutputStream = "output_video";
 static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
 
-@interface MultiHandTrackingMobileGPU () <MPPGraphDelegate, MPPInputSourceDelegate>
+@interface Charades () <MPPGraphDelegate, MPPInputSourceDelegate>
 
 // The MediaPipe graph currently in use. Initialized in viewDidLoad, started in viewWillAppear: and
 // sent video frames on _videoQueue.
@@ -57,7 +57,7 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
 
 @end
 
-@implementation MultiHandTrackingMobileGPU {
+@implementation Charades {
   /// Handles camera access via AVCaptureSession library.
   MPPCameraInputSource* _cameraSource;
 
@@ -72,20 +72,10 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
   dispatch_queue_t _videoQueue;
 }
 
-#pragma mark - Cleanup methods
-
-- (void)dealloc {
-  self.mediapipeGraph.delegate = nil;
-  [self.mediapipeGraph cancel];
-  // Ignore errors since we're cleaning up.
-  [self.mediapipeGraph closeAllInputStreamsWithError:nil];
-  [self.mediapipeGraph waitUntilDoneWithError:nil];
-}
-
 #pragma mark - External methods
 
 // Initialize graph and camera
-- (void)initGraphAndCamera {
+- (void) start {
 
   _renderer = [[MPPLayerRenderer alloc] init];
   _renderer.layer.frame = _liveView.layer.bounds;
@@ -109,10 +99,7 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
   self.mediapipeGraph.delegate = self;
   // Set maxFramesInFlight to a small value to avoid memory contention for real-time processing.
   self.mediapipeGraph.maxFramesInFlight = 2;
-}
 
-// Start graph and camera
-- (void)startGraphAndCamera {
   // Start running self.mediapipeGraph.
   NSError* error;
   if (![self.mediapipeGraph startWithError:&error]) {
@@ -125,6 +112,16 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
   });
 }
 
+#pragma mark - Cleanup methods
+
+- (void)dealloc {
+  self.mediapipeGraph.delegate = nil;
+  [self.mediapipeGraph cancel];
+  // Ignore errors since we're cleaning up.
+  [self.mediapipeGraph closeAllInputStreamsWithError:nil];
+  [self.mediapipeGraph waitUntilDoneWithError:nil];
+}
+
 #pragma mark - MediaPipe graph methods
 
 + (MPPGraph*)loadGraphFromResource:(NSString*)resource {
@@ -134,6 +131,7 @@ static const char* kVideoQueueLabel = "com.google.mediapipe.example.videoQueue";
   if (!resource || resource.length == 0) {
     return nil;
   }
+  
   NSURL* graphURL = [bundle URLForResource:resource withExtension:@"binarypb"];
   NSData* data = [NSData dataWithContentsOfURL:graphURL options:0 error:&configLoadError];
   if (!data) {

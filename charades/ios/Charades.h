@@ -1,17 +1,3 @@
-// Copyright 2019 The MediaPipe Authors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
 // MIT License
 //
 // Copyright (c) 2020 Petros Fountas
@@ -34,14 +20,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import <Availability.h>
 
-@interface MultiHandTrackingMobileGPU : NSObject
+#ifdef __cplusplus
+#define CHARADES_EXTERN         extern "C" __attribute__((visibility ("default")))
+#else
+#define CHARADES_EXTERN         extern __attribute__((visibility ("default")))
+#endif
 
-// Call me only once
-- (void)initGraphAndCamera;
+CHARADES_EXTERN API_AVAILABLE(ios(11.0)) @interface Charades : NSObject
 
-// Call me after init
-- (void)startGraphAndCamera;
+- (void) start;
 
 @end
