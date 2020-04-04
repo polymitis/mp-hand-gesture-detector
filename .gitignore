@@ -1,8 +1,11 @@
-provisioning_profile.mobileprovision
+mediapipe/provisioning_profile.mobileprovision
 bazel-bin
 bazel-genfiles
 bazel-mediapipe-ioss
 bazel-out
 bazel-testlogs
-*.xcodeproj
-*.tulsiproj/*.tulsiconf-user
+mediapipe/MediaPipe.xcodeproj
+mediapipe/MediaPipe.tulsiproj/*.tulsiconf-user
+
+# MacOS
+.DS_Store
