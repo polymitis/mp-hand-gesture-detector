@@ -19,9 +19,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-
-#import <Foundation/Foundation.h>
 #import <Availability.h>
+#import <AVFoundation/AVFoundation.h>
 
 #ifdef __cplusplus
 #define CHARADES_EXTERN         extern "C" __attribute__((visibility ("default")))
@@ -31,6 +30,5 @@
 
 CHARADES_EXTERN API_AVAILABLE(ios(11.0)) @interface Charades : NSObject
 
-- (void) start;
-
+- (void)processVideoFrame:(CVPixelBufferRef)imageBuffer;
 @end
