@@ -40,28 +40,26 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 
 #pragma mark - Setup methods
 
-- (Charades*)init
-{
+- (Charades*)init {
     if (self = [super init]) {
         // Load graph
         self.mediapipeGraph = [[self class] loadGraphFromResource:kGraphName];
         self.mediapipeGraph.delegate = self;
         // Set maxFramesInFlight to a small value to avoid memory contention for real-time processing.
         self.mediapipeGraph.maxFramesInFlight = 2;
-
+        
         // Start running self.mediapipeGraph.
         NSError* error;
         if (![self.mediapipeGraph startWithError:&error])
             NSLog(@"Failed to start graph: %@", error);
     }
-
+    
     return self;
 }
 
 #pragma mark - Cleanup methods
 
-- (void)dealloc
-{
+- (void)dealloc {
     self.mediapipeGraph.delegate = nil;
     [self.mediapipeGraph cancel];
     // Ignore errors since we're cleaning up.
@@ -71,9 +69,7 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 
 #pragma mark - External methods
 
-- (void)processVideoFrame:(CVPixelBufferRef)imageBuffer
-{
-    NSLog(@"Send image to graph");
+- (void)processVideoFrame:(CVPixelBufferRef)imageBuffer {
     [self.mediapipeGraph sendPixelBuffer:imageBuffer
                               intoStream:kInputStream
                               packetType:MPPPacketTypePixelBuffer];
@@ -81,38 +77,37 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 
 #pragma mark - MediaPipe graph methods
 
-+ (MPPGraph*)loadGraphFromResource:(NSString*)resource
-{
++ (MPPGraph*)loadGraphFromResource:(NSString*)resource {
     // Load the graph config resource.
     NSError* configLoadError = nil;
     NSBundle* bundle = [NSBundle bundleForClass:[self class]];
-
+    
     if (!resource || resource.length == 0) {
         return nil;
     }
-
+    
     NSURL* graphURL = [bundle URLForResource:resource
-			       withExtension:@"binarypb"];
-
+                               withExtension:@"binarypb"];
+    
     NSData* data = [NSData dataWithContentsOfURL:graphURL
-					 options:0
-					   error:&configLoadError];
+                                         options:0
+                                           error:&configLoadError];
     if (!data) {
         NSLog(@"Failed to load MediaPipe graph config: %@", configLoadError);
         return nil;
     }
-
+    
     // Parse the graph config resource into mediapipe::CalculatorGraphConfig proto object.
     mediapipe::CalculatorGraphConfig config;
     config.ParseFromArray(data.bytes, data.length);
-
+    
     // Create MediaPipe graph with mediapipe::CalculatorGraphConfig proto object.
     MPPGraph* newGraph = [[MPPGraph alloc] initWithGraphConfig:config];
     [newGraph addFrameOutputStream:kOutputStream
-		  outputPacketType:MPPPacketTypePixelBuffer];
+                  outputPacketType:MPPPacketTypePixelBuffer];
     [newGraph addFrameOutputStream:kLandmarksOutputStream
-		  outputPacketType:MPPPacketTypeRaw];
-
+                  outputPacketType:MPPPacketTypeRaw];
+    
     return newGraph;
 }
 
@@ -121,41 +116,38 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 // Receives CVPixelBufferRef from the MediaPipe graph. Invoked on a MediaPipe worker thread.
 - (void)mediapipeGraph:(MPPGraph*)graph
   didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer
-            fromStream:(const std::string&)streamName
-{
+            fromStream:(const std::string&)streamName {
     if (streamName == kOutputStream) {
         // Display the captured image on the screen.
         CVPixelBufferRetain(pixelBuffer);
-        NSLog(@"Render graph output image");
-
-        // dispatch_async(dispatch_get_main_queue(), ^{
-        //     [_renderer renderPixelBuffer:pixelBuffer];
-        //     CVPixelBufferRelease(pixelBuffer);
-        // });
-        CVPixelBufferRelease(pixelBuffer);
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(charades:didOutputPixelBuffer:)])
+                [self.delegate charades:self didOutputPixelBuffer:pixelBuffer];
+            CVPixelBufferRelease(pixelBuffer);
+        });
     }
 }
 
 // Receives a raw packet from the MediaPipe graph. Invoked on a MediaPipe worker thread.
 - (void)mediapipeGraph:(MPPGraph*)graph
        didOutputPacket:(const ::mediapipe::Packet&)packet
-            fromStream:(const std::string&)streamName
-{
+            fromStream:(const std::string&)streamName {
     if (streamName == kLandmarksOutputStream) {
         if (packet.IsEmpty()) {
             NSLog(@"[TS:%lld] No hand landmarks", packet.Timestamp().Value());
             return;
         }
-
+        
         const auto& multi_hand_landmarks = packet.Get<std::vector<::mediapipe::NormalizedLandmarkList>>();
         NSLog(@"[TS:%lld] Number of hand instances with landmarks: %lu",
               packet.Timestamp().Value(), multi_hand_landmarks.size());
-
+        
         for (int hand_index = 0; hand_index < multi_hand_landmarks.size(); ++hand_index) {
             const auto& landmarks = multi_hand_landmarks[hand_index];
             NSLog(@"\tNumber of landmarks for hand[%d]: %d",
                   hand_index, landmarks.landmark_size());
-
+            
             for (int i = 0; i < landmarks.landmark_size(); ++i)
                 NSLog(@"\t\tLandmark[%d]: (%f, %f, %f)",
                       i, landmarks.landmark(i).x(), landmarks.landmark(i).y(), landmarks.landmark(i).z());

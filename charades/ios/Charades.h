@@ -28,7 +28,16 @@
 #define CHARADES_EXTERN         extern __attribute__((visibility ("default")))
 #endif
 
+CHARADES_EXTERN API_AVAILABLE(ios(11.0)) @protocol CharadesDelegate <NSObject>
+@optional
+- (void)charades:(id)charades didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer;
+
+@end
+
 CHARADES_EXTERN API_AVAILABLE(ios(11.0)) @interface Charades : NSObject
 
 - (void)processVideoFrame:(CVPixelBufferRef)imageBuffer;
+
+@property (nonatomic, weak) id <CharadesDelegate> delegate;
+
 @end
