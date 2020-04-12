@@ -1,0 +1,71 @@
+{
+  "additionalFilePaths" : [
+    "mediapipe/workspace/charades/ios/BUILD"
+  ],
+  "buildTargets" : [
+    "//mediapipe/workspace/charades/ios:Charades"
+  ],
+  "optionSet" : {
+    "BazelBuildOptionsDebug" : {
+      "p" : "$(inherited)"
+    },
+    "BazelBuildOptionsRelease" : {
+      "p" : "$(inherited)"
+    },
+    "BazelBuildStartupOptionsDebug" : {
+      "p" : "$(inherited)"
+    },
+    "BazelBuildStartupOptionsRelease" : {
+      "p" : "$(inherited)"
+    },
+    "BuildActionPostActionScript" : {
+      "p" : "$(inherited)"
+    },
+    "BuildActionPreActionScript" : {
+      "p" : "$(inherited)"
+    },
+    "CommandlineArguments" : {
+      "p" : "$(inherited)"
+    },
+    "EnvironmentVariables" : {
+      "p" : "$(inherited)"
+    },
+    "LaunchActionPostActionScript" : {
+      "p" : "$(inherited)"
+    },
+    "LaunchActionPreActionScript" : {
+      "p" : "$(inherited)"
+    },
+    "ProjectGenerationBazelStartupOptions" : {
+      "p" : "$(inherited)"
+    },
+    "ProjectGenerationPlatformConfiguration" : {
+      "p" : "ios_arm64"
+    },
+    "TestActionPostActionScript" : {
+      "p" : "$(inherited)"
+    },
+    "TestActionPreActionScript" : {
+      "p" : "$(inherited)"
+    }
+  },
+  "projectName" : "Charades",
+  "sourceFilters" : [
+    "mediapipe",
+    "mediapipe/calculators",
+    "mediapipe/calculators/core",
+    "mediapipe/calculators/image",
+    "mediapipe/calculators/internal",
+    "mediapipe/calculators/tflite",
+    "mediapipe/calculators/util",
+    "mediapipe/gpu",
+    "mediapipe/graphs",
+    "mediapipe/graphs/hand_tracking",
+    "mediapipe/graphs/hand_tracking/subgraphs",
+    "mediapipe/models",
+    "mediapipe/objc",
+    "mediapipe/workspace",
+    "mediapipe/workspace/charades",
+    "mediapipe/workspace/charades/ios"
+  ]
+}

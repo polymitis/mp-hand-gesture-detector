@@ -1,0 +1,32 @@
+{
+  "additionalFilePaths" : [
+    "mediapipe/workspace/charades/ios/BUILD"
+  ],
+  "buildTargets" : [
+    "//mediapipe/workspace/charades/ios:Charades"
+  ],
+  "optionSet" : {
+    "ProjectGenerationPlatformConfiguration" : {
+      "p" : "ios_arm64"
+    }
+  },
+  "projectName" : "Charades",
+  "sourceFilters" : [
+    "mediapipe",
+    "mediapipe/calculators",
+    "mediapipe/calculators/core",
+    "mediapipe/calculators/image",
+    "mediapipe/calculators/internal",
+    "mediapipe/calculators/tflite",
+    "mediapipe/calculators/util",
+    "mediapipe/gpu",
+    "mediapipe/graphs",
+    "mediapipe/graphs/hand_tracking",
+    "mediapipe/graphs/hand_tracking/subgraphs",
+    "mediapipe/models",
+    "mediapipe/objc",
+    "mediapipe/workspace",
+    "mediapipe/workspace/charades",
+    "mediapipe/workspace/charades/ios"
+  ]
+}

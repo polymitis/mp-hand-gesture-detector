@@ -1,0 +1,14 @@
+{
+  "configDefaults" : {
+    "optionSet" : {
+      "ProjectGenerationPlatformConfiguration" : {
+        "p" : "ios_arm64"
+      }
+    }
+  },
+  "packages" : [
+    "mediapipe/workspace/charades/ios"
+  ],
+  "projectName" : "Charades",
+  "workspaceRoot" : "../../../../.."
+}
