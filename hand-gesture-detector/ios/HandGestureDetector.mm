@@ -19,7 +19,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-#import "Charades.h"
+#import "HandGestureDetector.h"
 #import "mediapipe/objc/MPPGraph.h"
 
 #include "mediapipe/framework/formats/landmark.pb.h"
@@ -30,17 +30,17 @@ static const char* kInputStream = "input_video";
 static const char* kOutputStream = "output_video";
 static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 
-@interface Charades () <MPPGraphDelegate>
+@interface HandGestureDetector () <MPPGraphDelegate>
 
 @property(nonatomic) MPPGraph* mediapipeGraph;
 
 @end
 
-@implementation Charades
+@implementation HandGestureDetector
 
 #pragma mark - Setup methods
 
-- (Charades*)init {
+- (HandGestureDetector*)init {
     if (self = [super init]) {
         // Load graph
         self.mediapipeGraph = [[self class] loadGraphFromResource:kGraphName];
@@ -122,8 +122,8 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
         CVPixelBufferRetain(pixelBuffer);
         
         dispatch_async(dispatch_get_main_queue(), ^{
-            if ([self.delegate respondsToSelector:@selector(charades:didOutputPixelBuffer:)])
-                [self.delegate charades:self didOutputPixelBuffer:pixelBuffer];
+            if ([self.delegate respondsToSelector:@selector(handGestureDetector:didOutputPixelBuffer:)])
+                [self.delegate handGestureDetector:self didOutputPixelBuffer:pixelBuffer];
             CVPixelBufferRelease(pixelBuffer);
         });
     }

@@ -41,8 +41,8 @@ genrule(
 )
 
 ios_framework(
-    name = "Charades",
-    bundle_id = "com.polymitis.framework.charades",
+    name = "HandGestureDetector",
+    bundle_id = "com.polymitis.framework.handgesturedetector",
     families = [
         "iphone",
         "ipad",
@@ -50,18 +50,18 @@ ios_framework(
     infoplists = ["Info.plist"],
     minimum_os_version = MIN_IOS_VERSION,
     hdrs = [
-        "Charades.h",
+        "HandGestureDetector.h",
     ],
-    deps = [":CharadesLib"],
+    deps = [":HandGestureDetectorLib"],
 )
 
 objc_library(
-    name = "CharadesLib",
+    name = "HandGestureDetectorLib",
     hdrs = [
-        "Charades.h",
+        "HandGestureDetector.h",
     ],
     srcs = [
-        "Charades.mm",
+        "HandGestureDetector.mm",
     ],
     data = [
         ":model",

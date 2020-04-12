@@ -23,21 +23,21 @@
 #import <AVFoundation/AVFoundation.h>
 
 #ifdef __cplusplus
-#define CHARADES_EXTERN         extern "C" __attribute__((visibility ("default")))
+#define HANDGESTUREDETECTOR_EXTERN         extern "C" __attribute__((visibility ("default")))
 #else
-#define CHARADES_EXTERN         extern __attribute__((visibility ("default")))
+#define HANDGESTUREDETECTOR_EXTERN         extern __attribute__((visibility ("default")))
 #endif
 
-CHARADES_EXTERN API_AVAILABLE(ios(11.0)) @protocol CharadesDelegate <NSObject>
+HANDGESTUREDETECTOR_EXTERN API_AVAILABLE(ios(11.0)) @protocol HandGestureDetectorDelegate <NSObject>
 @optional
-- (void)charades:(id)charades didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer;
+- (void)handGestureDetector:(id)hgd didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer;
 
 @end
 
-CHARADES_EXTERN API_AVAILABLE(ios(11.0)) @interface Charades : NSObject
+HANDGESTUREDETECTOR_EXTERN API_AVAILABLE(ios(11.0)) @interface HandGestureDetector : NSObject
 
 - (void)processVideoFrame:(CVPixelBufferRef)imageBuffer;
 
-@property (nonatomic, weak) id <CharadesDelegate> delegate;
+@property (nonatomic, weak) id <HandGestureDetectorDelegate> delegate;
 
 @end
