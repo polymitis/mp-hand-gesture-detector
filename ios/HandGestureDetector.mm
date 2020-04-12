@@ -69,7 +69,7 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 
 #pragma mark - External methods
 
-- (void)processVideoFrame:(CVPixelBufferRef)imageBuffer {
+- (void)processPixelBuffer:(CVPixelBufferRef)imageBuffer {
     [self.mediapipeGraph sendPixelBuffer:imageBuffer
                               intoStream:kInputStream
                               packetType:MPPPacketTypePixelBuffer];
@@ -99,7 +99,7 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
     
     // Parse the graph config resource into mediapipe::CalculatorGraphConfig proto object.
     mediapipe::CalculatorGraphConfig config;
-    config.ParseFromArray(data.bytes, data.length);
+    config.ParseFromArray(data.bytes, (int)data.length);
     
     // Create MediaPipe graph with mediapipe::CalculatorGraphConfig proto object.
     MPPGraph* newGraph = [[MPPGraph alloc] initWithGraphConfig:config];

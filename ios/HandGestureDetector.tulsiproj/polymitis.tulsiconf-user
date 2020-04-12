@@ -4,7 +4,7 @@
       "p" : "/Users/polymitis/Projects/bazel-1.1.0/output/bazel"
     },
     "WorkspaceRootPath" : {
-      "p" : "/Users/polymitis/Projects/Morpheus/mediapipe"
+      "p" : "/Users/polymitis/Projects/morpheus/mediapipe"
     }
   }
 }

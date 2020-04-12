@@ -36,7 +36,7 @@ HANDGESTUREDETECTOR_EXTERN API_AVAILABLE(ios(11.0)) @protocol HandGestureDetecto
 
 HANDGESTUREDETECTOR_EXTERN API_AVAILABLE(ios(11.0)) @interface HandGestureDetector : NSObject
 
-- (void)processVideoFrame:(CVPixelBufferRef)imageBuffer;
+- (void)processPixelBuffer:(CVPixelBufferRef)pixelBuffer;
 
 @property (nonatomic, weak) id <HandGestureDetectorDelegate> delegate;
 

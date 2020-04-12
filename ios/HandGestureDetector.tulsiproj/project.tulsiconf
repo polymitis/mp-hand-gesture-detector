@@ -7,8 +7,8 @@
     }
   },
   "packages" : [
-    "mediapipe/workspace/charades/ios"
+    "mediapipe/workspace/mp-hand-gesture-detector/ios"
   ],
-  "projectName" : "Charades",
+  "projectName" : "HandGestureDetector",
   "workspaceRoot" : "../../../../.."
 }

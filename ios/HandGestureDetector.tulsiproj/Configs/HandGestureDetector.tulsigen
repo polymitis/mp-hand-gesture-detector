@@ -1,9 +1,9 @@
 {
   "additionalFilePaths" : [
-    "mediapipe/workspace/charades/ios/BUILD"
+    "mediapipe/workspace/mp-hand-gesture-detector/ios/BUILD"
   ],
   "buildTargets" : [
-    "//mediapipe/workspace/charades/ios:Charades"
+    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector"
   ],
   "optionSet" : {
     "BazelBuildOptionsDebug" : {
@@ -49,23 +49,32 @@
       "p" : "$(inherited)"
     }
   },
-  "projectName" : "Charades",
+  "projectName" : "HandGestureDetector",
   "sourceFilters" : [
-    "mediapipe",
     "mediapipe/calculators",
     "mediapipe/calculators/core",
     "mediapipe/calculators/image",
     "mediapipe/calculators/internal",
     "mediapipe/calculators/tflite",
     "mediapipe/calculators/util",
+    "mediapipe/framework",
+    "mediapipe/framework/deps",
+    "mediapipe/framework/formats",
+    "mediapipe/framework/formats/annotation",
+    "mediapipe/framework/formats/object_detection",
+    "mediapipe/framework/port",
+    "mediapipe/framework/profiler",
+    "mediapipe/framework/stream_handler",
+    "mediapipe/framework/tool",
     "mediapipe/gpu",
     "mediapipe/graphs",
     "mediapipe/graphs/hand_tracking",
     "mediapipe/graphs/hand_tracking/subgraphs",
     "mediapipe/models",
     "mediapipe/objc",
-    "mediapipe/workspace",
-    "mediapipe/workspace/charades",
-    "mediapipe/workspace/charades/ios"
+    "mediapipe/util/tflite",
+    "mediapipe/util/tflite/operations",
+    "mediapipe/workspace/mp-hand-gesture-detector",
+    "mediapipe/workspace/mp-hand-gesture-detector/ios"
   ]
 }

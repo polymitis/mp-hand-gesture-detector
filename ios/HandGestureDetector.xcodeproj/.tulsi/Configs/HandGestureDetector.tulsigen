@@ -1,0 +1,41 @@
+{
+  "additionalFilePaths" : [
+    "mediapipe/workspace/mp-hand-gesture-detector/ios/BUILD"
+  ],
+  "buildTargets" : [
+    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector"
+  ],
+  "optionSet" : {
+    "ProjectGenerationPlatformConfiguration" : {
+      "p" : "ios_arm64"
+    }
+  },
+  "projectName" : "HandGestureDetector",
+  "sourceFilters" : [
+    "mediapipe/calculators",
+    "mediapipe/calculators/core",
+    "mediapipe/calculators/image",
+    "mediapipe/calculators/internal",
+    "mediapipe/calculators/tflite",
+    "mediapipe/calculators/util",
+    "mediapipe/framework",
+    "mediapipe/framework/deps",
+    "mediapipe/framework/formats",
+    "mediapipe/framework/formats/annotation",
+    "mediapipe/framework/formats/object_detection",
+    "mediapipe/framework/port",
+    "mediapipe/framework/profiler",
+    "mediapipe/framework/stream_handler",
+    "mediapipe/framework/tool",
+    "mediapipe/gpu",
+    "mediapipe/graphs",
+    "mediapipe/graphs/hand_tracking",
+    "mediapipe/graphs/hand_tracking/subgraphs",
+    "mediapipe/models",
+    "mediapipe/objc",
+    "mediapipe/util/tflite",
+    "mediapipe/util/tflite/operations",
+    "mediapipe/workspace/mp-hand-gesture-detector",
+    "mediapipe/workspace/mp-hand-gesture-detector/ios"
+  ]
+}
