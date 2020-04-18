@@ -24,6 +24,21 @@
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 
+// (N_HANDS #N, N_HLM #0, N_HLM #N-1, LM #0_0, .., LM#N-1_[N_HLM #N-1]-1)
+#define HGD_HLM_PKT_HEADER_LEN                  3
+#define HGD_HLM_PKT_NUM_HANDS_OFFSET            0
+#define HGD_HLM_PKT_NUM_HANDS                   2
+#define HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET   HGD_HLM_PKT_NUM_HANDS_OFFSET + 1
+#define HGD_HLM_PKT_NUM_HAND_LANDMARKS          21
+
+// LM(X, Y, Z)
+#define HGD_HLM_PKT_HAND_LANDMARK_LEN           3
+#define HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET      0
+#define HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET      1
+#define HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET      2
+
+#define HGD_HLM_PKT_LEN     (HGD_HLM_PKT_HEADER_LEN + (HGD_HLM_PKT_NUM_HANDS * HGD_HLM_PKT_NUM_HAND_LANDMARKS * HGD_HLM_PKT_HAND_LANDMARK_LEN))
+
 static NSString* const kGraphName = @"multi_hand_tracking_mobile_gpu";
 
 static const char* kInputStream = "input_video";
@@ -123,7 +138,8 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
         
         dispatch_async(dispatch_get_main_queue(), ^{
             if ([self.delegate respondsToSelector:@selector(handGestureDetector:didOutputPixelBuffer:)])
-                [self.delegate handGestureDetector:self didOutputPixelBuffer:pixelBuffer];
+                [self.delegate handGestureDetector:self
+                              didOutputPixelBuffer:pixelBuffer];
             CVPixelBufferRelease(pixelBuffer);
         });
     }
@@ -134,24 +150,35 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
        didOutputPacket:(const ::mediapipe::Packet&)packet
             fromStream:(const std::string&)streamName {
     if (streamName == kLandmarksOutputStream) {
+        float hlm_pkt[HGD_HLM_PKT_LEN];
+        for(int i = 0; i < HGD_HLM_PKT_LEN; ++i)
+            hlm_pkt[i] = 0.0f;
+        
         if (packet.IsEmpty()) {
             NSLog(@"[TS:%lld] No hand landmarks", packet.Timestamp().Value());
             return;
         }
         
         const auto& multi_hand_landmarks = packet.Get<std::vector<::mediapipe::NormalizedLandmarkList>>();
-        NSLog(@"[TS:%lld] Number of hand instances with landmarks: %lu",
-              packet.Timestamp().Value(), multi_hand_landmarks.size());
+        NSLog(@"[TS:%lld] Number of hand instances with landmarks: %lu", packet.Timestamp().Value(), multi_hand_landmarks.size());
+        hlm_pkt[HGD_HLM_PKT_NUM_HANDS_OFFSET] = (float) multi_hand_landmarks.size();
         
-        for (int hand_index = 0; hand_index < multi_hand_landmarks.size(); ++hand_index) {
+        for (int hand_index = 0; hand_index < multi_hand_landmarks.size() && hand_index < HGD_HLM_PKT_NUM_HANDS; hand_index++) {
             const auto& landmarks = multi_hand_landmarks[hand_index];
-            NSLog(@"\tNumber of landmarks for hand[%d]: %d",
-                  hand_index, landmarks.landmark_size());
+            NSLog(@"\tNumber of landmarks for hand[%d]: %d", hand_index, landmarks.landmark_size());
+            hlm_pkt[HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET + hand_index] = (float) landmarks.landmark_size();
             
-            for (int i = 0; i < landmarks.landmark_size(); ++i)
-                NSLog(@"\t\tLandmark[%d]: (%f, %f, %f)",
-                      i, landmarks.landmark(i).x(), landmarks.landmark(i).y(), landmarks.landmark(i).z());
+            for (int i = 0; i < landmarks.landmark_size() && i < HGD_HLM_PKT_NUM_HAND_LANDMARKS; i++) {
+                NSLog(@"\t\tLandmark[%d]: (%f, %f, %f)", i, landmarks.landmark(i).x(), landmarks.landmark(i).y(), landmarks.landmark(i).z());
+                int lm_index = (int)(HGD_HLM_PKT_NUM_HANDS_OFFSET + multi_hand_landmarks.size() + (hand_index * HGD_HLM_PKT_NUM_HAND_LANDMARKS * HGD_HLM_PKT_HAND_LANDMARK_LEN) + i);
+                hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET] = (float) landmarks.landmark(i).x();
+                hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET] = (float) landmarks.landmark(i).y();
+                hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET] = (float) landmarks.landmark(i).z();
+            }
         }
+        
+        if ([self.delegate respondsToSelector:@selector(handGestureDetector:didOutputHandLandmarks:)])
+            [self.delegate handGestureDetector:self didOutputHandLandmarks:hlm_pkt];
     }
 }
 
