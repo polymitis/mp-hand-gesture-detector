@@ -162,18 +162,23 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
         const auto& multi_hand_landmarks = packet.Get<std::vector<::mediapipe::NormalizedLandmarkList>>();
         NSLog(@"[TS:%lld] Number of hand instances with landmarks: %lu", packet.Timestamp().Value(), multi_hand_landmarks.size());
         hlm_pkt[HGD_HLM_PKT_NUM_HANDS_OFFSET] = (float) multi_hand_landmarks.size();
+        NSLog(@"\tlm_pkt[%d]: %f", HGD_HLM_PKT_NUM_HANDS_OFFSET, hlm_pkt[HGD_HLM_PKT_NUM_HANDS_OFFSET]);
         
         for (int hand_index = 0; hand_index < multi_hand_landmarks.size() && hand_index < HGD_HLM_PKT_NUM_HANDS; hand_index++) {
             const auto& landmarks = multi_hand_landmarks[hand_index];
             NSLog(@"\tNumber of landmarks for hand[%d]: %d", hand_index, landmarks.landmark_size());
             hlm_pkt[HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET + hand_index] = (float) landmarks.landmark_size();
+            NSLog(@"\thlm_pkt[%d]: %f", HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET + hand_index, hlm_pkt[HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET + hand_index]);
             
             for (int i = 0; i < landmarks.landmark_size() && i < HGD_HLM_PKT_NUM_HAND_LANDMARKS; i++) {
                 NSLog(@"\t\tLandmark[%d]: (%f, %f, %f)", i, landmarks.landmark(i).x(), landmarks.landmark(i).y(), landmarks.landmark(i).z());
-                int lm_index = (int)(HGD_HLM_PKT_NUM_HANDS_OFFSET + multi_hand_landmarks.size() + (hand_index * HGD_HLM_PKT_NUM_HAND_LANDMARKS * HGD_HLM_PKT_HAND_LANDMARK_LEN) + i);
+                int lm_index = (int)(HGD_HLM_PKT_HEADER_LEN + (hand_index * HGD_HLM_PKT_NUM_HAND_LANDMARKS * HGD_HLM_PKT_HAND_LANDMARK_LEN) + i);
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET] = (float) landmarks.landmark(i).x();
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET] = (float) landmarks.landmark(i).y();
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET] = (float) landmarks.landmark(i).z();
+                NSLog(@"\t\t\thlm_pkt[%d]: %f", lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET]);
+                NSLog(@"\t\t\thlm_pkt[%d]: %f", lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET]);
+                NSLog(@"\t\t\thlm_pkt[%d]: %f", lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET]);
             }
         }
         
