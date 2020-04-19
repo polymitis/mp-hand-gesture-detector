@@ -32,7 +32,7 @@ MIN_IOS_VERSION = "11.0"
 genrule(
     name = "model",
     srcs = [
-        "//mediapipe/models:hand_landmark.tflite"
+        "//mediapipe/models:hand_landmark_3d.tflite"
     ],
     outs = [
         "hand_landmark.tflite"
