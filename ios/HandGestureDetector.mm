@@ -23,26 +23,42 @@
 #import "mediapipe/objc/MPPGraph.h"
 
 #include "mediapipe/framework/formats/landmark.pb.h"
+#include "mediapipe/framework/formats/rect.pb.h"
 
-// (N_HANDS #N, N_HLM #0, N_HLM #N-1, LM #0_0, .., LM#N-1_[N_HLM #N-1]-1)
-#define HGD_HLM_PKT_HEADER_LEN                  3
-#define HGD_HLM_PKT_NUM_HANDS_OFFSET            0
-#define HGD_HLM_PKT_NUM_HANDS                   2
-#define HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET   HGD_HLM_PKT_NUM_HANDS_OFFSET + 1
-#define HGD_HLM_PKT_NUM_HAND_LANDMARKS          21
+// Landmarks packet HLM_PKT (N_HANDS #N, N_HLM #0, N_HLM #1, LM #0_0, .., LM #0_1, LM #1_0, .., LM #1_20)
+#define HGD_HLM_PKT_HEADER_LEN                  (3)
+#define HGD_HLM_PKT_NUM_HANDS_OFFSET            (0)
+#define HGD_HLM_PKT_NUM_HANDS                   (2)
+#define HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET   (HGD_HLM_PKT_NUM_HANDS_OFFSET + 1)
+#define HGD_HLM_PKT_NUM_HAND_LANDMARKS          (21)
+// Landmark LM (X, Y, Z)
+#define HGD_HLM_PKT_HAND_LANDMARK_LEN           (3)
+#define HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET      (0)
+#define HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET      (1)
+#define HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET      (2)
+// Size of landmarks packet
+#define HGD_HLM_PKT_LEN                         (HGD_HLM_PKT_HEADER_LEN + (HGD_HLM_PKT_NUM_HANDS * HGD_HLM_PKT_NUM_HAND_LANDMARKS * HGD_HLM_PKT_HAND_LANDMARK_LEN))
 
-// LM(X, Y, Z)
-#define HGD_HLM_PKT_HAND_LANDMARK_LEN           3
-#define HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET      0
-#define HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET      1
-#define HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET      2
-
-#define HGD_HLM_PKT_LEN     (HGD_HLM_PKT_HEADER_LEN + (HGD_HLM_PKT_NUM_HANDS * HGD_HLM_PKT_NUM_HAND_LANDMARKS * HGD_HLM_PKT_HAND_LANDMARK_LEN))
+// Rects packet HRC_PKT (N_HANDS #N, RECT_ID #0, .., RECT_R #0, RECT_ID #1, .., RECT_R #1)
+#define HGD_HRC_PKT_HEADER_LEN                  (1)
+#define HGD_HRC_PKT_NUM_HANDS_OFFSET            (0)
+#define HGD_HRC_PKT_NUM_HANDS                   (2)
+#define HGD_HRC_PKT_RECT_NUM_PROP               (6)
+// Rect RECT (ID, X, Y, W, H, R)
+#define HGD_HRC_PKT_RECT_ID_OFFSET              (0)
+#define HGD_HRC_PKT_RECT_X_OFFSET               (1)
+#define HGD_HRC_PKT_RECT_Y_OFFSET               (2)
+#define HGD_HRC_PKT_RECT_W_OFFSET               (3)
+#define HGD_HRC_PKT_RECT_H_OFFSET               (4)
+#define HGD_HRC_PKT_RECT_R_OFFSET               (5)
+// Size of rects packet
+#define HGD_HRC_PKT_LEN                         (HGD_HRC_PKT_HEADER_LEN + (HGD_HRC_PKT_NUM_HANDS * HGD_HRC_PKT_RECT_NUM_PROP))
 
 static NSString* const kGraphName = @"multi_hand_tracking_mobile_gpu";
 
 static const char* kInputStream = "input_video";
 static const char* kOutputStream = "output_video";
+static const char* kHandRectsOutputStream = "multi_hand_rects";
 static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 
 @interface HandGestureDetector () <MPPGraphDelegate>
@@ -120,6 +136,8 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
     MPPGraph* newGraph = [[MPPGraph alloc] initWithGraphConfig:config];
     [newGraph addFrameOutputStream:kOutputStream
                   outputPacketType:MPPPacketTypePixelBuffer];
+    [newGraph addFrameOutputStream:kHandRectsOutputStream
+                  outputPacketType:MPPPacketTypeRaw];
     [newGraph addFrameOutputStream:kLandmarksOutputStream
                   outputPacketType:MPPPacketTypeRaw];
     
@@ -176,14 +194,43 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET] = (float) landmarks.landmark(i).x();
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET] = (float) landmarks.landmark(i).y();
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET] = (float) landmarks.landmark(i).z();
-                NSLog(@"\t\t\thlm_pkt[%d]: %f", lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET]);
-                NSLog(@"\t\t\thlm_pkt[%d]: %f", lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET]);
-                NSLog(@"\t\t\thlm_pkt[%d]: %f", lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET]);
+                NSLog(@"\t\t\thlm_pkt[%d]: (%f, %f, %f)", lm_index, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET], hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET], hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET]);
             }
         }
         
         if ([self.delegate respondsToSelector:@selector(handGestureDetector:didOutputHandLandmarks:)])
             [self.delegate handGestureDetector:self didOutputHandLandmarks:hlm_pkt];
+    }
+    else if (streamName == kHandRectsOutputStream) {
+        float hrc_pkt[HGD_HRC_PKT_LEN];
+        for(int i = 0; i < HGD_HRC_PKT_LEN; ++i)
+            hrc_pkt[i] = 0.0f;
+        
+        if (packet.IsEmpty()) {
+            NSLog(@"[TS:%lld] No hand rects", packet.Timestamp().Value());
+            return;
+        }
+        
+        const auto& multi_hand_rects = packet.Get<std::vector<::mediapipe::NormalizedRect>>();
+        NSLog(@"[TS:%lld] Number of hand instances with rects: %lu", packet.Timestamp().Value(), multi_hand_rects.size());
+        hrc_pkt[HGD_HRC_PKT_NUM_HANDS_OFFSET] = (float) multi_hand_rects.size();
+        NSLog(@"\tlm_pkt[%d]: %f", HGD_HRC_PKT_NUM_HANDS_OFFSET, hrc_pkt[HGD_HRC_PKT_NUM_HANDS_OFFSET]);
+        
+        for (int hand_index = 0; hand_index < multi_hand_rects.size() && hand_index < HGD_HLM_PKT_NUM_HANDS; hand_index++) {
+            const auto& rect = multi_hand_rects[hand_index];
+            NSLog(@"\tRect for hand[%d]: (ID %lld, X %f, Y %f, W %f, H %f, R %f)", hand_index, rect.rect_id(), rect.x_center(), rect.y_center(), rect.width(), rect.height(), rect.rotation());
+            int rect_index = (int)(HGD_HRC_PKT_HEADER_LEN + (hand_index * HGD_HRC_PKT_RECT_NUM_PROP));
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_ID_OFFSET] = rect.rect_id();
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_X_OFFSET] = rect.x_center();
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_Y_OFFSET] = rect.y_center();
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_W_OFFSET] = rect.width();
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_H_OFFSET] = rect.height();
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_R_OFFSET] = rect.rotation();
+            NSLog(@"\tRect for hrc_pkt[%d]: (ID %f, X %f, Y %f, W %f, H %f, R %f)", rect_index, hrc_pkt[rect_index + HGD_HRC_PKT_RECT_ID_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_X_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_Y_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_W_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_H_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_R_OFFSET]);
+        }
+        
+        if ([self.delegate respondsToSelector:@selector(handGestureDetector:didOutputHandRects:)])
+            [self.delegate handGestureDetector:self didOutputHandRects:hrc_pkt];
     }
 }
 
