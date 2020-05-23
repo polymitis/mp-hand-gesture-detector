@@ -142,54 +142,54 @@ BUILD_SETTINGS = BazelBuildSettings(
     '/private/var/tmp/_bazel_polymitis/609b41128b185adc21e460c114e95cb1/execroot/mediapipe',
     'ios_arm64',
     {
-        'ios_i386': [
-            '--apple_platform_type=ios',
-            '--cpu=ios_i386',
-            '--watchos_cpus=i386',
-        ],
-        'watchos_i386': [
-            '--apple_platform_type=watchos',
-            '--watchos_cpus=i386',
-        ],
         'watchos_armv7k': [
             '--apple_platform_type=watchos',
             '--watchos_cpus=armv7k,arm64_32',
-        ],
-        'watchos_arm64_32': [
-            '--apple_platform_type=watchos',
-            '--watchos_cpus=armv7k,arm64_32',
-        ],
-        'macos_x86_64': [
-            '--apple_platform_type=macos',
-            '--cpu=darwin_x86_64',
         ],
         'ios_x86_64': [
             '--apple_platform_type=ios',
             '--cpu=ios_x86_64',
             '--watchos_cpus=i386',
         ],
-        'tvos_x86_64': [
-            '--apple_platform_type=tvos',
-            '--tvos_cpus=x86_64',
-        ],
-        'ios_arm64': [
-            '--apple_platform_type=ios',
-            '--cpu=ios_arm64',
-            '--watchos_cpus=armv7k,arm64_32',
-        ],
-        'tvos_arm64': [
-            '--apple_platform_type=tvos',
-            '--tvos_cpus=arm64',
-        ],
-        'ios_arm64e': [
-            '--apple_platform_type=ios',
-            '--cpu=ios_arm64e',
+        'watchos_arm64_32': [
+            '--apple_platform_type=watchos',
             '--watchos_cpus=armv7k,arm64_32',
         ],
         'ios_armv7': [
             '--apple_platform_type=ios',
             '--cpu=ios_armv7',
             '--watchos_cpus=armv7k',
+        ],
+        'tvos_x86_64': [
+            '--apple_platform_type=tvos',
+            '--tvos_cpus=x86_64',
+        ],
+        'macos_x86_64': [
+            '--apple_platform_type=macos',
+            '--cpu=darwin_x86_64',
+        ],
+        'watchos_i386': [
+            '--apple_platform_type=watchos',
+            '--watchos_cpus=i386',
+        ],
+        'ios_arm64e': [
+            '--apple_platform_type=ios',
+            '--cpu=ios_arm64e',
+            '--watchos_cpus=armv7k,arm64_32',
+        ],
+        'ios_arm64': [
+            '--apple_platform_type=ios',
+            '--cpu=ios_arm64',
+            '--watchos_cpus=armv7k,arm64_32',
+        ],
+        'ios_i386': [
+            '--apple_platform_type=ios',
+            '--cpu=ios_i386',
+            '--watchos_cpus=i386',
+        ],
+        'tvos_arm64': [
+            '--apple_platform_type=tvos',
+            '--tvos_cpus=arm64',
         ],
     },
     set(),

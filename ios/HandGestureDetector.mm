@@ -20,9 +20,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 #import "HandGestureDetector.h"
+
 #import "mediapipe/objc/MPPGraph.h"
 
+#include "mediapipe/framework/formats/detection.pb.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
+#include "mediapipe/framework/formats/location_data.pb.h"
 #include "mediapipe/framework/formats/rect.pb.h"
 
 // Landmarks packet HLM_PKT (N_HANDS #N, N_HLM #0, N_HLM #1, LM #0_0, .., LM #0_1, LM #1_0, .., LM #1_20)
@@ -58,6 +61,7 @@ static NSString* const kGraphName = @"multi_hand_tracking_mobile_gpu";
 
 static const char* kInputStream = "input_video";
 static const char* kOutputStream = "output_video";
+static const char* kPalmDetectionsOutputStream = "multi_palm_detections";
 static const char* kHandRectsOutputStream = "multi_hand_rects";
 static const char* kLandmarksOutputStream = "multi_hand_landmarks";
 
@@ -136,6 +140,8 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
     MPPGraph* newGraph = [[MPPGraph alloc] initWithGraphConfig:config];
     [newGraph addFrameOutputStream:kOutputStream
                   outputPacketType:MPPPacketTypePixelBuffer];
+    [newGraph addFrameOutputStream:kPalmDetectionsOutputStream
+                  outputPacketType:MPPPacketTypeRaw];
     [newGraph addFrameOutputStream:kHandRectsOutputStream
                   outputPacketType:MPPPacketTypeRaw];
     [newGraph addFrameOutputStream:kLandmarksOutputStream
@@ -172,29 +178,24 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
         for(int i = 0; i < HGD_HLM_PKT_LEN; ++i)
             hlm_pkt[i] = 0.0f;
         
-        if (packet.IsEmpty()) {
-            NSLog(@"[TS:%lld] No hand landmarks", packet.Timestamp().Value());
+        if (packet.IsEmpty())
             return;
-        }
         
         const auto& multi_hand_landmarks = packet.Get<std::vector<::mediapipe::NormalizedLandmarkList>>();
-        NSLog(@"[TS:%lld] Number of hand instances with landmarks: %lu", packet.Timestamp().Value(), multi_hand_landmarks.size());
         hlm_pkt[HGD_HLM_PKT_NUM_HANDS_OFFSET] = (float) multi_hand_landmarks.size();
-        NSLog(@"\tlm_pkt[%d]: %f", HGD_HLM_PKT_NUM_HANDS_OFFSET, hlm_pkt[HGD_HLM_PKT_NUM_HANDS_OFFSET]);
+        NSLog(@"[TS:%lld] Number of hand instances with landmarks: %lu", packet.Timestamp().Microseconds(), multi_hand_landmarks.size());
         
         for (int hand_index = 0; hand_index < multi_hand_landmarks.size() && hand_index < HGD_HLM_PKT_NUM_HANDS; hand_index++) {
             const auto& landmarks = multi_hand_landmarks[hand_index];
-            NSLog(@"\tNumber of landmarks for hand[%d]: %d", hand_index, landmarks.landmark_size());
             hlm_pkt[HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET + hand_index] = (float) landmarks.landmark_size();
-            NSLog(@"\thlm_pkt[%d]: %f", HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET + hand_index, hlm_pkt[HGD_HLM_PKT_NUM_HAND_LANDMARKS_OFFSET + hand_index]);
+            NSLog(@"[TS:%lld]\t Number of landmarks for hand[%d]: %d", packet.Timestamp().Microseconds(), hand_index, landmarks.landmark_size());
             
             for (int i = 0; i < landmarks.landmark_size() && i < HGD_HLM_PKT_NUM_HAND_LANDMARKS; i++) {
-                NSLog(@"\t\tLandmark[%d]: (%f, %f, %f)", i, landmarks.landmark(i).x(), landmarks.landmark(i).y(), landmarks.landmark(i).z());
                 int lm_index = (int)(HGD_HLM_PKT_HEADER_LEN + (hand_index * HGD_HLM_PKT_NUM_HAND_LANDMARKS * HGD_HLM_PKT_HAND_LANDMARK_LEN) + i);
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET] = (float) landmarks.landmark(i).x();
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET] = (float) landmarks.landmark(i).y();
                 hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET] = (float) landmarks.landmark(i).z();
-                NSLog(@"\t\t\thlm_pkt[%d]: (%f, %f, %f)", lm_index, hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_X_OFFSET], hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Y_OFFSET], hlm_pkt[lm_index + HGD_HLM_PKT_HAND_LANDMARK_Z_OFFSET]);
+                NSLog(@"[TS:%lld]\t\t Landmark[%d]: (%f, %f, %f)", packet.Timestamp().Microseconds(), i, landmarks.landmark(i).x(), landmarks.landmark(i).y(), landmarks.landmark(i).z());
             }
         }
         
@@ -206,19 +207,15 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
         for(int i = 0; i < HGD_HRC_PKT_LEN; ++i)
             hrc_pkt[i] = 0.0f;
         
-        if (packet.IsEmpty()) {
-            NSLog(@"[TS:%lld] No hand rects", packet.Timestamp().Value());
+        if (packet.IsEmpty())
             return;
-        }
         
         const auto& multi_hand_rects = packet.Get<std::vector<::mediapipe::NormalizedRect>>();
-        NSLog(@"[TS:%lld] Number of hand instances with rects: %lu", packet.Timestamp().Value(), multi_hand_rects.size());
         hrc_pkt[HGD_HRC_PKT_NUM_HANDS_OFFSET] = (float) multi_hand_rects.size();
-        NSLog(@"\tlm_pkt[%d]: %f", HGD_HRC_PKT_NUM_HANDS_OFFSET, hrc_pkt[HGD_HRC_PKT_NUM_HANDS_OFFSET]);
+        NSLog(@"[TS:%lld] Report: Number of hand rects: %lu", packet.Timestamp().Microseconds(), multi_hand_rects.size());
         
         for (int hand_index = 0; hand_index < multi_hand_rects.size() && hand_index < HGD_HLM_PKT_NUM_HANDS; hand_index++) {
             const auto& rect = multi_hand_rects[hand_index];
-            NSLog(@"\tRect for hand[%d]: (ID %lld, X %f, Y %f, W %f, H %f, R %f)", hand_index, rect.rect_id(), rect.x_center(), rect.y_center(), rect.width(), rect.height(), rect.rotation());
             int rect_index = (int)(HGD_HRC_PKT_HEADER_LEN + (hand_index * HGD_HRC_PKT_RECT_NUM_PROP));
             hrc_pkt[rect_index + HGD_HRC_PKT_RECT_ID_OFFSET] = rect.rect_id();
             hrc_pkt[rect_index + HGD_HRC_PKT_RECT_X_OFFSET] = rect.x_center();
@@ -226,11 +223,36 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
             hrc_pkt[rect_index + HGD_HRC_PKT_RECT_W_OFFSET] = rect.width();
             hrc_pkt[rect_index + HGD_HRC_PKT_RECT_H_OFFSET] = rect.height();
             hrc_pkt[rect_index + HGD_HRC_PKT_RECT_R_OFFSET] = rect.rotation();
-            NSLog(@"\tRect for hrc_pkt[%d]: (ID %f, X %f, Y %f, W %f, H %f, R %f)", rect_index, hrc_pkt[rect_index + HGD_HRC_PKT_RECT_ID_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_X_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_Y_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_W_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_H_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_R_OFFSET]);
+            NSLog(@"[TS:%lld]\t Report: Rect[%d]: (X %f, Y %f, W %f, H %f, R %f)", packet.Timestamp().Microseconds(), hand_index, rect.x_center(), rect.y_center(), rect.width(), rect.height(), rect.rotation());
         }
         
         if ([self.delegate respondsToSelector:@selector(handGestureDetector:didOutputHandRects:)])
             [self.delegate handGestureDetector:self didOutputHandRects:hrc_pkt];
+    }
+    else if (streamName == kPalmDetectionsOutputStream) {
+        float hrc_pkt[HGD_HRC_PKT_LEN];
+        for(int i = 0; i < HGD_HRC_PKT_LEN; ++i)
+            hrc_pkt[i] = 0.0f;
+        
+        if (packet.IsEmpty())
+            return;
+        
+        const auto& multi_palm_detections = packet.Get<std::vector<::mediapipe::Detection>>();
+        hrc_pkt[HGD_HRC_PKT_NUM_HANDS_OFFSET] = (float) multi_palm_detections.size();
+        NSLog(@"[TS:%lld] Report: Number of palm detections: %lu", packet.Timestamp().Microseconds(), multi_palm_detections.size());
+        
+        for (int hand_index = 0; hand_index < multi_palm_detections.size() && hand_index < HGD_HLM_PKT_NUM_HANDS; hand_index++) {
+            const auto& bbox = multi_palm_detections[hand_index].location_data().relative_bounding_box();
+            int rect_index = (int)(HGD_HRC_PKT_HEADER_LEN + (hand_index * HGD_HRC_PKT_RECT_NUM_PROP));
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_X_OFFSET] = bbox.xmin() + bbox.width() / 2;
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_Y_OFFSET] = bbox.ymin() + bbox.height() / 2;
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_W_OFFSET] = bbox.width();
+            hrc_pkt[rect_index + HGD_HRC_PKT_RECT_H_OFFSET] = bbox.height();
+            NSLog(@"[TS:%lld]\t Report: Location BBox Rect[%d]: (X %f, Y %f, W %f, H %f)", packet.Timestamp().Microseconds(), hand_index, hrc_pkt[rect_index + HGD_HRC_PKT_RECT_X_OFFSET], hrc_pkt[rect_index + HGD_HRC_PKT_RECT_Y_OFFSET], bbox.width(), bbox.height());
+        }
+        
+        if ([self.delegate respondsToSelector:@selector(handGestureDetector:didOutputPalmRects:)])
+            [self.delegate handGestureDetector:self didOutputPalmRects:hrc_pkt];
     }
 }
 

@@ -3,7 +3,8 @@
     "mediapipe/workspace/mp-hand-gesture-detector/ios/BUILD"
   ],
   "buildTargets" : [
-    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector"
+    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector",
+    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetectorApp"
   ],
   "optionSet" : {
     "BazelBuildOptionsDebug" : {
@@ -23,6 +24,9 @@
     },
     "BuildActionPreActionScript" : {
       "p" : "$(inherited)"
+    },
+    "CLANG_CXX_LANGUAGE_STANDARD" : {
+      "p" : "c++17"
     },
     "CommandlineArguments" : {
       "p" : "$(inherited)"

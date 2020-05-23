@@ -3,9 +3,13 @@
     "mediapipe/workspace/mp-hand-gesture-detector/ios/BUILD"
   ],
   "buildTargets" : [
-    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector"
+    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector",
+    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetectorApp"
   ],
   "optionSet" : {
+    "CLANG_CXX_LANGUAGE_STANDARD" : {
+      "p" : "c++17"
+    },
     "ProjectGenerationPlatformConfiguration" : {
       "p" : "ios_arm64"
     }

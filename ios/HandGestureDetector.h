@@ -33,6 +33,7 @@ HANDGESTUREDETECTOR_EXTERN API_AVAILABLE(ios(11.0)) @protocol HandGestureDetecto
 - (void)handGestureDetector:(id)hgd didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer;
 - (void)handGestureDetector:(id)hgd didOutputHandLandmarks:(float*)hlmPkt;
 - (void)handGestureDetector:(id)hgd didOutputHandRects:(float*)hrcPkt;
+- (void)handGestureDetector:(id)hgd didOutputPalmRects:(float*)hrcPkt;
 
 @end
 
