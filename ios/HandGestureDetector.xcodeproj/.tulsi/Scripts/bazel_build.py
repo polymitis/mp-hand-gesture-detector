@@ -25,6 +25,7 @@ import io
 import json
 import os
 import pipes
+import plistlib
 import re
 import shutil
 import signal
@@ -340,17 +341,39 @@ class _OptionsParser(object):
 
   @staticmethod
   def _GetXcodeVersionString():
-    """Returns Xcode version info from the environment as a string."""
-    reported_version = os.environ['XCODE_VERSION_ACTUAL']
-    match = re.match(r'(\d{2})(\d)(\d)$', reported_version)
-    if not match:
-      _PrintUnbuffered('Warning: Failed to extract Xcode version from %s' % (
-          reported_version))
+    """Returns Xcode version info from the Xcode's version.plist.
+
+    Just reading XCODE_VERSION_ACTUAL from the environment seems like
+    a more reasonable implementation, but has shown to be unreliable,
+    at least when using Xcode 11.3.1 and opening the project within an
+    Xcode workspace.
+    """
+    developer_dir = os.environ['DEVELOPER_DIR']
+    app_dir = developer_dir.split('.app')[0] + '.app'
+    version_plist_path = os.path.join(app_dir, 'Contents', 'version.plist')
+    try:
+      # python2 API to plistlib - needs updating if/when Tulsi bumps to python3
+      plist = plistlib.readPlist(version_plist_path)
+    except IOError:
+      _PrintXcodeWarning('Tulsi cannot determine Xcode version, error '
+                         'reading from {}'.format(version_plist_path))
       return None
-    major_version = int(match.group(1))
-    minor_version = int(match.group(2))
-    fix_version = int(match.group(3))
-    return '%d.%d.%d' % (major_version, minor_version, fix_version)
+    try:
+      # Example: "11.3.1", "11.3", "11.0"
+      key = 'CFBundleShortVersionString'
+      version_string = plist[key]
+    except KeyError:
+      _PrintXcodeWarning('Tulsi cannot determine Xcode version from {}, no '
+                         '"{}" key'.format(version_plist_path, key))
+      return None
+
+    # But we need to normalize to major.minor.patch, e.g. 11.3.0 or
+    # 11.0.0, so add one or two ".0" if needed (two just in case
+    # there is ever just a single version number like "12")
+    dots_count = version_string.count('.')
+    dot_zeroes_to_add = 2 - dots_count
+    version_string += '.0' * dot_zeroes_to_add
+    return version_string
 
   @staticmethod
   def _ComputeXcodeVersionFlag():
@@ -397,7 +420,6 @@ class BazelBuildBridge(object):
   def __init__(self, build_settings):
     self.build_settings = build_settings
     self.verbose = 0
-    self.build_path = None
     self.bazel_bin_path = None
     self.codesign_attributes = {}
 
@@ -525,9 +547,6 @@ class BazelBuildBridge(object):
     features = parser.GetEnabledFeatures()
     self.direct_debug_prefix_map = 'DirectDebugPrefixMap' in features
     self.normalized_prefix_map = 'DebugPathNormalization' in features
-
-    self.build_path = os.path.join(self.bazel_bin_path,
-                                   os.environ.get('TULSI_BUILD_PATH', ''))
 
     # Path to the Build Events JSON file uses pid and is removed if the
     # build is successful.
@@ -685,29 +704,50 @@ class BazelBuildBridge(object):
                        (' '.join([pipes.quote(x) for x in command]),
                         self.workspace_root,
                         self.project_dir))
-    # Xcode translates anything that looks like ""<path>:<line>:" that is not
-    # followed by the word "warning" into an error. Bazel warnings and debug
-    # messages do not fit this scheme and must be patched here.
-    bazel_warning_line_regex = re.compile(
-        r'(?:DEBUG|WARNING): ([^:]+:\d+:(?:\d+:)?)\s+(.+)')
+    # Clean up bazel output to make it look better in Xcode.
+    bazel_line_regex = re.compile(
+        r'(INFO|DEBUG|WARNING|ERROR|FAILED): ([^:]+:\d+:(?:\d+:)?)\s+(.+)')
 
-    def PatchBazelWarningStatements(output_line):
-      match = bazel_warning_line_regex.match(output_line)
+    bazel_generic_regex = re.compile(r'(INFO|DEBUG|WARNING|ERROR|FAILED): (.*)')
+
+    def PatchBazelDiagnosticStatements(output_line):
+      """Make Bazel output more Xcode friendly."""
+
+      def BazelLabelToXcodeLabel(bazel_label):
+        """Map Bazel labels to xcode labels for build output."""
+        xcode_labels = {
+            'INFO': 'note',
+            'DEBUG': 'note',
+            'WARNING': 'warning',
+            'ERROR': 'error',
+            'FAILED': 'error'
+        }
+        return xcode_labels.get(bazel_label, bazel_label)
+
+      match = bazel_line_regex.match(output_line)
       if match:
-        output_line = '%s warning: %s' % (match.group(1), match.group(2))
+        xcode_label = BazelLabelToXcodeLabel(match.group(1))
+        output_line = '%s %s: %s' % (match.group(2), xcode_label,
+                                     match.group(3))
+      else:
+        match = bazel_generic_regex.match(output_line)
+        if match:
+          xcode_label = BazelLabelToXcodeLabel(match.group(1))
+          output_line = '%s: %s' % (xcode_label, match.group(2))
       return output_line
 
-    patch_xcode_parsable_line = PatchBazelWarningStatements
     if self.workspace_root != self.project_dir:
       # Match (likely) filename:line_number: lines.
       xcode_parsable_line_regex = re.compile(r'([^/][^:]+):\d+:')
 
       def PatchOutputLine(output_line):
-        output_line = PatchBazelWarningStatements(output_line)
+        output_line = PatchBazelDiagnosticStatements(output_line)
         if xcode_parsable_line_regex.match(output_line):
           output_line = '%s/%s' % (self.workspace_root, output_line)
         return output_line
       patch_xcode_parsable_line = PatchOutputLine
+    else:
+      patch_xcode_parsable_line = PatchBazelDiagnosticStatements
 
     def HandleOutput(output):
       for line in output.splitlines():
@@ -971,7 +1011,7 @@ class BazelBuildBridge(object):
           self._RsyncBundle(full_name, bundle_path, output_path)
         else:
           _PrintXcodeWarning('Could not find bundle %s in main bundle. ' %
-                             (bundle_name + bundle_extension) +
+                             (full_name) +
                              'Device-level Instruments debugging will be '
                              'disabled for this bundle. Please report a '
                              'Tulsi bug and attach a full Xcode build log.')
@@ -1204,7 +1244,8 @@ class BazelBuildBridge(object):
   def _InstallDSYMBundles(self, output_dir, outputs_data):
     """Copies any generated dSYM bundles to the given directory."""
     # Indicates that our aspect reports a dSYM was generated for this build.
-    has_dsym = outputs_data[0]['has_dsym']
+    primary_output_data = outputs_data[0]
+    has_dsym = primary_output_data['has_dsym']
 
     if not has_dsym:
       return 0, None
@@ -1215,9 +1256,20 @@ class BazelBuildBridge(object):
     # Declares the Xcode-generated name of our main target's dSYM.
     # This environment variable is always set, for any possible Xcode output
     # that could generate a dSYM bundle.
-    target_dsym = os.environ.get('DWARF_DSYM_FILE_NAME')
-    if target_dsym:
-      dsym_to_process = set([(self.build_path, target_dsym)])
+    #
+    # Note that this may differ from the Bazel name as Tulsi may modify the
+    # Xcode `BUNDLE_NAME`, so we need to make sure we use Bazel as the source
+    # of truth for Bazel's dSYM name, but copy it over to where Xcode expects.
+    xcode_target_dsym = os.environ.get('DWARF_DSYM_FILE_NAME')
+    dsym_to_process = set()
+    if xcode_target_dsym:
+      dsym_path = primary_output_data.get('dsym_path')
+      if dsym_path:
+        dsym_to_process.add((dsym_path, xcode_target_dsym))
+      else:
+        _PrintXcodeWarning(
+            'Unable to resolve dSYM paths for main bundle %s'
+            % primary_output_data)
 
     # Collect additional dSYM bundles generated by the dependencies of this
     # build such as extensions or frameworks.
@@ -1226,28 +1278,26 @@ class BazelBuildBridge(object):
       for bundle_info in data.get('embedded_bundles', []):
         if not bundle_info['has_dsym']:
           continue
-        # Uses the parent of archive_root to find dSYM bundles associated with
-        # app/extension/df bundles. Currently hinges on implementation of the
-        # build rules.
-        dsym_path = os.path.dirname(bundle_info['archive_root'])
-        bundle_full_name = (bundle_info['bundle_name'] +
-                            bundle_info['bundle_extension'])
-        dsym_filename = '%s.dSYM' % bundle_full_name
-        child_dsyms.add((dsym_path, dsym_filename))
+        dsym_path = bundle_info.get('dsym_path')
+        if dsym_path:
+          child_dsyms.add((dsym_path, os.path.basename(dsym_path)))
+        else:
+          _PrintXcodeWarning(
+              'Unable to resolve dSYM paths for embedded bundle %s'
+              % bundle_info)
     dsym_to_process.update(child_dsyms)
 
     dsyms_found = []
-    for dsym_path, dsym_filename in dsym_to_process:
-      input_dsym_full_path = os.path.join(dsym_path, dsym_filename)
-      output_full_path = os.path.join(output_dir, dsym_filename)
+    for input_dsym_full_path, xcode_dsym_name in dsym_to_process:
+      output_full_path = os.path.join(output_dir, xcode_dsym_name)
       exit_code, path = self._InstallBundle(input_dsym_full_path,
                                             output_full_path)
       if exit_code:
-        _PrintXcodeWarning('Failed to install dSYM "%s" (%s)'
-                           % (dsym_filename, exit_code))
+        _PrintXcodeWarning('Failed to install dSYM to "%s" (%s)'
+                           % (input_dsym_full_path, exit_code))
       elif path is None:
-        _PrintXcodeWarning('Could not find a dSYM bundle named "%s"'
-                           % dsym_filename)
+        _PrintXcodeWarning('Did not find a dSYM bundle at %s'
+                           % input_dsym_full_path)
       else:
         dsyms_found.append(path)
 
@@ -1706,13 +1756,15 @@ def main(argv):
 
 
 if __name__ == '__main__':
+  # Register the interrupt handler immediately in case we receive SIGINT while
+  # trying to acquire the lock.
+  signal.signal(signal.SIGINT, _InterruptHandler)
   _LockFileAcquire(_LockFileCreate())
   _logger = tulsi_logging.Logger()
   logger_warning = tulsi_logging.validity_check()
   if logger_warning:
     _PrintXcodeWarning(logger_warning)
   _timer = Timer('Everything', 'complete_build').Start()
-  signal.signal(signal.SIGINT, _InterruptHandler)
   _exit_code = main(sys.argv)
   _timer.End()
   sys.exit(_exit_code)
