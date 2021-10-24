@@ -1,10 +1,10 @@
 {
   "optionSet" : {
     "BazelPath" : {
-      "p" : "/usr/local/Cellar/bazel/3.3.1/bin/bazel"
+      "p" : "/Users/polymitis/go/bin/bazelisk"
     },
     "WorkspaceRootPath" : {
-      "p" : "/Users/polymitis/Projects/hand-gamepad/mediapipe"
+      "p" : "/Users/polymitis/scratch/hand-gamepad/mediapipe"
     }
   }
 }

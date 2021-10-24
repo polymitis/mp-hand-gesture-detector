@@ -1,6 +1,12 @@
 {
   "configDefaults" : {
     "optionSet" : {
+      "BazelBuildOptionsDebug" : {
+        "p" : "--incompatible_run_shell_command_string=false --incompatible_objc_provider_remove_compile_info=false"
+      },
+      "BazelBuildOptionsRelease" : {
+        "p" : "--incompatible_run_shell_command_string=false --incompatible_objc_provider_remove_compile_info=false"
+      },
       "CLANG_CXX_LANGUAGE_STANDARD" : {
         "p" : "c++17"
       },

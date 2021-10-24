@@ -99,12 +99,14 @@ objc_library(
     srcs = [
         "HandGestureDetector.mm",
     ],
+    copts = [
+        "-std=c++17"
+    ],
     data = [
-        "//mediapipe/graphs/hand_tracking:multi_hand_tracking_mobile_gpu_binary_graph",
-        "//mediapipe/models:hand_landmark.tflite",
-        "//mediapipe/models:handedness.txt",
-        "//mediapipe/models:palm_detection.tflite",
-        "//mediapipe/models:palm_detection_labelmap.txt",
+        "//mediapipe/graphs/hand_tracking:hand_tracking_mobile_gpu.binarypb",
+        "//mediapipe/modules/hand_landmark:hand_landmark_full.tflite",
+        "//mediapipe/modules/hand_landmark:handedness.txt",
+        "//mediapipe/modules/palm_detection:palm_detection.tflite",
     ],
     sdk_frameworks = [
         "AVFoundation",
@@ -114,9 +116,8 @@ objc_library(
     ],
     deps = [
         "//mediapipe/objc:mediapipe_framework_ios",
-        "//mediapipe/graphs/hand_tracking:multi_hand_mobile_calculators",
+        "//mediapipe/graphs/hand_tracking:mobile_calculators",
         "//mediapipe/framework/formats:landmark_cc_proto",
-        "//mediapipe/framework/formats:rect_cc_proto",
         "@ios_opencv//:OpencvFramework",
     ],
 )

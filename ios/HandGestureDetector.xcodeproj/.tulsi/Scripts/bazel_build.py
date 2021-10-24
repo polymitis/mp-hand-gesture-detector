@@ -106,6 +106,16 @@ def _InterruptHandler(signum, frame):
   sys.exit(0)
 
 
+def _FindDefaultLldbInit():
+  """Returns the path to the primary lldbinit file that Xcode would load or None when no file exists."""
+  for lldbinit_shortpath in ['~/.lldbinit-Xcode', '~/.lldbinit']:
+    lldbinit_path = os.path.expanduser(lldbinit_shortpath)
+    if os.path.isfile(lldbinit_path):
+      return lldbinit_path
+
+  return None
+
+
 class Timer(object):
   """Simple profiler."""
 
@@ -438,21 +448,13 @@ class BazelBuildBridge(object):
 
     self.tulsi_version = os.environ.get('TULSI_VERSION', 'UNKNOWN')
 
+    self.custom_lldbinit = os.environ.get('TULSI_LLDBINIT_FILE')
+
     # TODO(b/69857078): Remove this when wrapped_clang is updated.
     self.direct_debug_prefix_map = False
     self.normalized_prefix_map = False
 
     self.update_symbol_cache = UpdateSymbolCache()
-
-    # Target architecture.  Must be defined for correct setting of
-    # the --cpu flag. Note that Xcode will set multiple values in
-    # ARCHS when building for a Generic Device.
-    archs = os.environ.get('ARCHS')
-    if not archs:
-      _PrintXcodeError('Tulsi requires env variable ARCHS to be '
-                       'set.  Please file a bug against Tulsi.')
-      sys.exit(1)
-    self.arch = archs.split()[-1]
 
     # Path into which generated artifacts should be copied.
     self.built_products_dir = os.environ['BUILT_PRODUCTS_DIR']
@@ -509,6 +511,20 @@ class BazelBuildBridge(object):
     else:
       self.codesigning_allowed = os.environ.get('CODE_SIGNING_ALLOWED') == 'YES'
 
+    # Target architecture.  Must be defined for correct setting of
+    # the --cpu flag. Note that Xcode will set multiple values in
+    # ARCHS when building for a Generic Device.
+    archs = os.environ.get('ARCHS')
+    if not archs:
+      _PrintXcodeError('Tulsi requires env variable ARCHS to be '
+                       'set.  Please file a bug against Tulsi.')
+      sys.exit(1)
+    arch = archs.split()[-1]
+    if self.is_simulator and arch == "arm64":
+      self.arch = "sim_" + arch
+    else:
+      self.arch = arch
+
     if self.codesigning_allowed:
       platform_prefix = 'iOS'
       if self.platform_name.startswith('macos'):
@@ -542,6 +558,7 @@ class BazelBuildBridge(object):
     self.bazel_bin_path = os.path.abspath(parser.bazel_bin_path)
     self.bazel_executable = parser.bazel_executable
     self.bazel_exec_root = self.build_settings.bazelExecRoot
+    self.bazel_output_base = self.build_settings.bazelOutputBase
 
     # Update feature flags.
     features = parser.GetEnabledFeatures()
@@ -572,17 +589,35 @@ class BazelBuildBridge(object):
     post_bazel_timer = Timer('Total Tulsi Post-Bazel time', 'total_post_bazel')
     post_bazel_timer.Start()
 
+
+    # This needs to run after `bazel build`, since it depends on the Bazel
+    # output directories
+
     if not os.path.exists(self.bazel_exec_root):
       _Fatal('No Bazel execution root was found at %r. Debugging experience '
              'will be compromised. Please report a Tulsi bug.'
              % self.bazel_exec_root)
       return 404
+    if not os.path.exists(self.bazel_output_base):
+      _Fatal('No Bazel output base was found at %r. Editing experience '
+             'will be compromised for external workspaces. Please report a'
+             ' Tulsi bug.'
+             % self.bazel_output_base)
+      return 404
 
-    # This needs to run after `bazel build`, since it depends on the Bazel
-    # workspace directory
-    exit_code = self._LinkTulsiWorkspace()
+    exit_code = self._LinkTulsiToBazel('tulsi-execution-root', self.bazel_exec_root)
     if exit_code:
       return exit_code
+    # Old versions of Tulsi mis-referred to the execution root as the workspace.
+    # We preserve the old symlink name for backwards compatibility.
+    exit_code = self._LinkTulsiToBazel('tulsi-workspace', self.bazel_exec_root)
+    if exit_code:
+      return exit_code
+    exit_code = self._LinkTulsiToBazel(
+        'tulsi-output-base', self.bazel_output_base)
+    if exit_code:
+      return exit_code
+
 
     exit_code, outputs_data = self._ExtractAspectOutputsData(outputs)
     if exit_code:
@@ -1243,36 +1278,30 @@ class BazelBuildBridge(object):
 
   def _InstallDSYMBundles(self, output_dir, outputs_data):
     """Copies any generated dSYM bundles to the given directory."""
-    # Indicates that our aspect reports a dSYM was generated for this build.
-    primary_output_data = outputs_data[0]
-    has_dsym = primary_output_data['has_dsym']
 
-    if not has_dsym:
-      return 0, None
-
-    # Start the timer now that we know we have dSYM bundles to install.
-    timer = Timer('Installing DSYM bundles', 'installing_dsym').Start()
-
-    # Declares the Xcode-generated name of our main target's dSYM.
-    # This environment variable is always set, for any possible Xcode output
-    # that could generate a dSYM bundle.
-    #
-    # Note that this may differ from the Bazel name as Tulsi may modify the
-    # Xcode `BUNDLE_NAME`, so we need to make sure we use Bazel as the source
-    # of truth for Bazel's dSYM name, but copy it over to where Xcode expects.
-    xcode_target_dsym = os.environ.get('DWARF_DSYM_FILE_NAME')
     dsym_to_process = set()
-    if xcode_target_dsym:
-      dsym_path = primary_output_data.get('dsym_path')
-      if dsym_path:
-        dsym_to_process.add((dsym_path, xcode_target_dsym))
-      else:
-        _PrintXcodeWarning(
-            'Unable to resolve dSYM paths for main bundle %s'
-            % primary_output_data)
+    primary_output_data = outputs_data[0]
+    if primary_output_data['has_dsym']:
+      # Declares the Xcode-generated name of our main target's dSYM.
+      # This environment variable is always set, for any possible Xcode output
+      # that could generate a dSYM bundle.
+      #
+      # Note that this may differ from the Bazel name as Tulsi may modify the
+      # Xcode `BUNDLE_NAME`, so we need to make sure we use Bazel as the source
+      # of truth for Bazel's dSYM name, but copy it over to where Xcode expects.
+      xcode_target_dsym = os.environ.get('DWARF_DSYM_FILE_NAME')
+
+      if xcode_target_dsym:
+        dsym_path = primary_output_data.get('dsym_path')
+        if dsym_path:
+          dsym_to_process.add((dsym_path, xcode_target_dsym))
+        else:
+          _PrintXcodeWarning('Unable to resolve dSYM paths for main bundle %s' %
+                             primary_output_data)
 
     # Collect additional dSYM bundles generated by the dependencies of this
-    # build such as extensions or frameworks.
+    # build such as extensions or frameworks. Note that a main target may not
+    # have dSYMs while subtargets (like an xctest) still can have them.
     child_dsyms = set()
     for data in outputs_data:
       for bundle_info in data.get('embedded_bundles', []):
@@ -1286,6 +1315,12 @@ class BazelBuildBridge(object):
               'Unable to resolve dSYM paths for embedded bundle %s'
               % bundle_info)
     dsym_to_process.update(child_dsyms)
+
+    if not dsym_to_process:
+      return 0, None
+
+    # Start the timer now that we know we have dSYM bundles to install.
+    timer = Timer('Installing dSYM bundles', 'installing_dsym').Start()
 
     dsyms_found = []
     for input_dsym_full_path, xcode_dsym_name in dsym_to_process:
@@ -1455,25 +1490,55 @@ class BazelBuildBridge(object):
     return bundle_attributes.Get(attribute)
 
   def _UpdateLLDBInit(self, clear_source_map=False):
-    """Updates ~/.lldbinit-tulsiproj to enable debugging of Bazel binaries."""
+    """Updates lldbinit to enable debugging of Bazel binaries."""
 
-    # Make sure a reference to ~/.lldbinit-tulsiproj exists in ~/.lldbinit or
-    # ~/.lldbinit-Xcode. Priority is given to ~/.lldbinit-Xcode if it exists,
-    # otherwise the bootstrapping will be written to ~/.lldbinit.
-    BootstrapLLDBInit()
+    # An additional lldbinit file that we should load in the lldbinit file
+    # we are about to write.
+    additional_lldbinit = None
 
-    with open(TULSI_LLDBINIT_FILE, 'w') as out:
+    if self.custom_lldbinit is None:
+      # Write our settings to the global ~/.lldbinit-tulsiproj file when no
+      # custom lldbinit is provided.
+      lldbinit_file = TULSI_LLDBINIT_FILE
+      # Make sure a reference to ~/.lldbinit-tulsiproj exists in ~/.lldbinit or
+      # ~/.lldbinit-Xcode. Priority is given to ~/.lldbinit-Xcode if it exists,
+      # otherwise the bootstrapping will be written to ~/.lldbinit.
+      BootstrapLLDBInit(True)
+    else:
+      # Remove any reference to ~/.lldbinit-tulsiproj if the global lldbinit was
+      # previously bootstrapped. This prevents the global lldbinit from having
+      # side effects on the custom lldbinit file.
+      BootstrapLLDBInit(False)
+      # When using a custom lldbinit, Xcode will directly load our custom file
+      # so write our settings to this custom file. Retain standard Xcode
+      # behavior by loading the default file in our custom file.
+      lldbinit_file = self.custom_lldbinit
+      additional_lldbinit = _FindDefaultLldbInit()
+
+    project_basename = os.path.basename(self.project_file_path)
+    workspace_root = self._NormalizePath(self.workspace_root)
+
+    with open(lldbinit_file, 'w') as out:
       out.write('# This file is autogenerated by Tulsi and should not be '
                 'edited.\n')
+
+      if additional_lldbinit is not None:
+        out.write('# This loads the default lldbinit file to retain standard '
+                  'Xcode behavior.\n')
+        out.write('command source "%s"\n' % additional_lldbinit)
+
+      out.write('# This sets lldb\'s working directory to the Bazel workspace '
+                'root used by %r.\n' % project_basename)
+      out.write('platform settings -w "%s"\n' % workspace_root)
 
       if clear_source_map:
         out.write('settings clear target.source-map\n')
         return 0
 
       if self.normalized_prefix_map:
-        source_map = ('./', self._NormalizePath(self.workspace_root))
+        source_map = ('./', workspace_root)
         out.write('# This maps the normalized root to that used by '
-                  '%r.\n' % os.path.basename(self.project_file_path))
+                  '%r.\n' % project_basename)
       else:
         # NOTE: settings target.source-map is different from
         # DBGSourcePathRemapping; the former is an LLDB target-level
@@ -1485,7 +1550,7 @@ class BazelBuildBridge(object):
         # side-effects in how they individually handle debug information.
         source_map = self._ExtractTargetSourceMap()
         out.write('# This maps Bazel\'s execution root to that used by '
-                  '%r.\n' % os.path.basename(self.project_file_path))
+                  '%r.\n' % project_basename)
 
       out.write('settings set target.source-map "%s" "%s"\n' % source_map)
 
@@ -1711,17 +1776,17 @@ class BazelBuildBridge(object):
       sm_execroot = self._NormalizePath(sm_execroot)
     return (sm_execroot, sm_destpath)
 
-  def _LinkTulsiWorkspace(self):
-    """Links the Bazel Workspace to the Tulsi Workspace (`tulsi-workspace`)."""
-    tulsi_workspace = os.path.join(self.project_file_path,
+  def _LinkTulsiToBazel(self, symlink_name, destination):
+    """Links symlink_name (in project/.tulsi) to the specified destination."""
+    symlink_path = os.path.join(self.project_file_path,
                                    '.tulsi',
-                                   'tulsi-workspace')
-    if os.path.islink(tulsi_workspace):
-      os.unlink(tulsi_workspace)
-    os.symlink(self.bazel_exec_root, tulsi_workspace)
-    if not os.path.exists(tulsi_workspace):
+                                   symlink_name)
+    if os.path.islink(symlink_path):
+      os.unlink(symlink_path)
+    os.symlink(destination, symlink_path)
+    if not os.path.exists(symlink_path):
       _PrintXcodeError(
-          'Linking Tulsi Workspace to %s failed.' % tulsi_workspace)
+          'Linking %s to %s failed.' % (symlink_path, destination))
       return -1
 
   @staticmethod

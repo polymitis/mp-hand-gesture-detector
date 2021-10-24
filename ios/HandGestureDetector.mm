@@ -57,13 +57,20 @@
 // Size of rects packet
 #define HGD_HRC_PKT_LEN                         (HGD_HRC_PKT_HEADER_LEN + (HGD_HRC_PKT_NUM_HANDS * HGD_HRC_PKT_RECT_NUM_PROP))
 
-static NSString* const kGraphName = @"multi_hand_tracking_mobile_gpu";
+// Max number of hands to detect/process.
+static const int kNumHands = 2;
 
+static NSString* const kGraphName = @"hand_tracking_mobile_gpu";
+
+// Input streams
 static const char* kInputStream = "input_video";
+static const char* kNumHandsInputSidePacket = "num_hands";
+
+// Output streams
 static const char* kOutputStream = "output_video";
-static const char* kPalmDetectionsOutputStream = "multi_palm_detections";
-static const char* kHandRectsOutputStream = "multi_hand_rects";
-static const char* kLandmarksOutputStream = "multi_hand_landmarks";
+static const char* kPalmDetectionsOutputStream = "palm_detections";
+static const char* kHandRectsOutputStream = "hand_rects_from_palm_detections";
+static const char* kLandmarksOutputStream = "hand_landmarks";
 
 @interface HandGestureDetector () <MPPGraphDelegate>
 
@@ -118,6 +125,7 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
     NSBundle* bundle = [NSBundle bundleForClass:[self class]];
     
     if (!resource || resource.length == 0) {
+        NSLog(@"Failed to load MediaPipe graph config: Unreadable resource: %@", resource);
         return nil;
     }
     
@@ -138,6 +146,10 @@ static const char* kLandmarksOutputStream = "multi_hand_landmarks";
     
     // Create MediaPipe graph with mediapipe::CalculatorGraphConfig proto object.
     MPPGraph* newGraph = [[MPPGraph alloc] initWithGraphConfig:config];
+
+    [newGraph setSidePacket:(mediapipe::MakePacket<int>(kNumHands))
+                      named:kNumHandsInputSidePacket];
+
     [newGraph addFrameOutputStream:kOutputStream
                   outputPacketType:MPPPacketTypePixelBuffer];
     [newGraph addFrameOutputStream:kPalmDetectionsOutputStream

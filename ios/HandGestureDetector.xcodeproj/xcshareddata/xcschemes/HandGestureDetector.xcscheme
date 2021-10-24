@@ -1,29 +1,78 @@
-
-<Scheme LastUpgradeVersion="1000" version="1.3">
-    <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
-        <BuildActionEntries>
-            <BuildActionEntry buildForArchiving="YES" buildForAnalyzing="YES" buildForProfiling="YES" buildForRunning="YES" buildForTesting="YES">
-                <BuildableReference BuildableName="HandGestureDetector.framework" ReferencedContainer="container:HandGestureDetector.xcodeproj" BuildableIdentifier="primary" BlueprintIdentifier="5D3379D7842A855400000000" BlueprintName="HandGestureDetector"></BuildableReference>
-            </BuildActionEntry>
-        </BuildActionEntries>
-    </BuildAction>
-    <TestAction shouldUseLaunchSchemeArgsEnv="YES" buildConfiguration="__TulsiTestRunner_Debug" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB">
-        <Testables></Testables>
-        <BuildableProductRunnable runnableDebuggingMode="0">
-            <BuildableReference BlueprintName="HandGestureDetector" BlueprintIdentifier="5D3379D7842A855400000000" BuildableIdentifier="primary" ReferencedContainer="container:HandGestureDetector.xcodeproj" BuildableName="HandGestureDetector.framework"></BuildableReference>
-        </BuildableProductRunnable>
-    </TestAction>
-    <LaunchAction allowLocationSimulation="YES" useCustomWorkingDirectory="NO" debugServiceExtension="internal" ignoresPersistentStateOnLaunch="NO" buildConfiguration="Debug" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" launchStyle="0" debugDocumentVersioning="YES">
-        <EnvironmentVariables></EnvironmentVariables>
-        <BuildableProductRunnable runnableDebuggingMode="0">
-            <BuildableReference BuildableName="HandGestureDetector.framework" BuildableIdentifier="primary" ReferencedContainer="container:HandGestureDetector.xcodeproj" BlueprintIdentifier="5D3379D7842A855400000000" BlueprintName="HandGestureDetector"></BuildableReference>
-        </BuildableProductRunnable>
-    </LaunchAction>
-    <ProfileAction useCustomWorkingDirectory="NO" buildConfiguration="__TulsiTestRunner_Release" debugDocumentVersioning="YES" shouldUseLaunchSchemeArgsEnv="YES">
-        <BuildableProductRunnable runnableDebuggingMode="0">
-            <BuildableReference BuildableName="HandGestureDetector.framework" BuildableIdentifier="primary" ReferencedContainer="container:HandGestureDetector.xcodeproj" BlueprintIdentifier="5D3379D7842A855400000000" BlueprintName="HandGestureDetector"></BuildableReference>
-        </BuildableProductRunnable>
-    </ProfileAction>
-    <AnalyzeAction buildConfiguration="Debug"></AnalyzeAction>
-    <ArchiveAction revealArchiveInOrganizer="YES" buildConfiguration="Release"></ArchiveAction>
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1300"
+   version = "1.3">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "5D3379D7842A855400000000"
+               BuildableName = "HandGestureDetector.framework"
+               BlueprintName = "HandGestureDetector"
+               ReferencedContainer = "container:HandGestureDetector.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "__TulsiTestRunner_Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "5D3379D7842A855400000000"
+            BuildableName = "HandGestureDetector.framework"
+            BlueprintName = "HandGestureDetector"
+            ReferencedContainer = "container:HandGestureDetector.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "__TulsiTestRunner_Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "5D3379D7842A855400000000"
+            BuildableName = "HandGestureDetector.framework"
+            BlueprintName = "HandGestureDetector"
+            ReferencedContainer = "container:HandGestureDetector.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
 </Scheme>

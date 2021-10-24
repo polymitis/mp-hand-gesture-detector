@@ -3,10 +3,15 @@
     "mediapipe/workspace/mp-hand-gesture-detector/ios/BUILD"
   ],
   "buildTargets" : [
-    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector",
     "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetectorApp"
   ],
   "optionSet" : {
+    "BazelBuildOptionsDebug" : {
+      "p" : "--incompatible_run_shell_command_string=false --incompatible_objc_provider_remove_compile_info=false"
+    },
+    "BazelBuildOptionsRelease" : {
+      "p" : "--incompatible_run_shell_command_string=false --incompatible_objc_provider_remove_compile_info=false"
+    },
     "CLANG_CXX_LANGUAGE_STANDARD" : {
       "p" : "c++17"
     },

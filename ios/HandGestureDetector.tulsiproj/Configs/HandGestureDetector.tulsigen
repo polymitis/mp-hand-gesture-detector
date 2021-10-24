@@ -3,7 +3,6 @@
     "mediapipe/workspace/mp-hand-gesture-detector/ios/BUILD"
   ],
   "buildTargets" : [
-    "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetector",
     "//mediapipe/workspace/mp-hand-gesture-detector/ios:HandGestureDetectorApp"
   ],
   "optionSet" : {
